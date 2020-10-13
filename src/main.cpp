@@ -14,15 +14,6 @@
 #define GREENPIN 10
 #define REDPIN 11
 
-enum class buttons
-{
-  midi,
-  yellow,
-  red,
-  blue,
-  green
-} button;
-
 enum class ledStates
 {
   off,
@@ -31,7 +22,7 @@ enum class ledStates
   flickr,
   unknown,
 } redState,
-    blueState, greenState, yellowState, prevRedState, prevBlueState, prevGreenState, prevYellowState;
+    blueState, greenState, yellowState;
 
 //button declarations
 using namespace ace_button;
@@ -72,11 +63,6 @@ void setup()
   yellowState = ledStates::breathe;
   greenState = ledStates::breathe;
   blueState = ledStates::breathe;
-
-  prevRedState = ledStates::unknown;
-  prevGreenState = ledStates::unknown;
-  prevBlueState = ledStates::unknown;
-  prevYellowState = ledStates::unknown;
 
   Serial.println("ready");
 }
