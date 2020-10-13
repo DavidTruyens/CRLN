@@ -3,27 +3,52 @@
 #include "AceButton.h"
 #include "jled.h"
 
-#define INPUTPIN1 A1
-#define GREENLED 12
-#define REDLED 10
+#define MIDI_IN A0
+#define RED_IN A1
+#define GREEN_IN A2
+#define BLUE_IN A3
+#define YELLOW_IN A4
 
+#define YELLOWPIN 5
+#define BLUEPIN 9
+#define GREENPIN 10
+#define REDPIN 11
+
+enum class buttons
+{
+  midi,
+  yellow,
+  red,
+  blue,
+  green
+} button;
+
+enum class ledStates
+{
+  off,
+  on,
+  breathe,
+  flickr,
+  unknown,
+} redState,
+    blueState, greenState, yellowState, prevRedState, prevBlueState, prevGreenState, prevYellowState;
+
+//button declarations
 using namespace ace_button;
+AceButton midiBtn(MIDI_IN, LOW, 0);
+AceButton redBtn(RED_IN, LOW, 1);
+AceButton greenBtn(GREEN_IN, LOW, 2);
+AceButton blueBtn(BLUE_IN, LOW, 3);
+AceButton yellowBtn(YELLOW_IN, LOW, 4);
 
-AceButton button1(INPUTPIN1);
-
+//buttons event handler
 void handleEvent(AceButton *, uint8_t, uint8_t);
 
-JLed GreenLed = JLed(GREENLED).Breathe(5000).Forever();
-JLed RedLed = JLed(REDLED).Breathe(2000).Forever();
-
-enum class programStates : uint8_t
-{
-  ready,
-  started,
-  running,
-  stopping,
-  stopped
-} progState;
+//led declarations
+JLed greenLed = JLed(GREENPIN).Breathe(5000).Forever();
+JLed redLed = JLed(REDPIN).Breathe(3000).Forever();
+JLed blueLed = JLed(BLUEPIN).Breathe(1000).Forever();
+JLed yellowLed = JLed(YELLOWPIN).Breathe(2000).Forever();
 
 void setup()
 {
@@ -31,15 +56,27 @@ void setup()
   delay(2000);
   Serial.begin(115200);
 
-  pinMode(INPUTPIN1, INPUT_PULLUP);
-  ButtonConfig *buttonConfig = button1.getButtonConfig();
+  pinMode(MIDI_IN, INPUT_PULLUP);
+  pinMode(RED_IN, INPUT_PULLUP);
+  pinMode(YELLOW_IN, INPUT_PULLUP);
+  pinMode(BLUE_IN, INPUT_PULLUP);
+  pinMode(GREEN_IN, INPUT_PULLUP);
+
+  ButtonConfig *buttonConfig = ButtonConfig::getSystemButtonConfig();
   buttonConfig->setEventHandler(handleEvent);
   buttonConfig->setFeature(ButtonConfig::kFeatureClick);
-  buttonConfig->setFeature(ButtonConfig::kFeatureDoubleClick);
   buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
-  buttonConfig->setFeature(ButtonConfig::kFeatureRepeatPress);
 
-  progState = programStates::ready;
+  redState = ledStates::breathe;
+  yellowState = ledStates::breathe;
+  greenState = ledStates::breathe;
+  blueState = ledStates::breathe;
+
+  prevRedState = ledStates::unknown;
+  prevGreenState = ledStates::unknown;
+  prevBlueState = ledStates::unknown;
+  prevYellowState = ledStates::unknown;
+
   Serial.println("ready");
 }
 
@@ -51,155 +88,162 @@ void printState();
 
 void loop()
 {
-  button1.check();
-  runStates();
-  GreenLed.Update();
-  RedLed.Update();
+  midiBtn.check();
+  redBtn.check();
+  greenBtn.check();
+  blueBtn.check();
+  yellowBtn.check();
+
+  redLed.Update();
+  greenLed.Update();
+  blueLed.Update();
+  yellowLed.Update();
 }
 
-programStates prevState = programStates::ready;
-
-void runStates()
+void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
 {
-  if (prevState != progState)
+
+  uint8_t ledID = aceBtn->getId();
+
+  //-----MIDI BUTTON--------
+  if (ledID == 0)
   {
-    prevState = progState;
-
-    switch (progState)
+    switch (eventType)
     {
-    case programStates::ready:
-      GreenLed.Breathe(5000);
-      GreenLed.Forever();
-      Serial.println("ready");
+    case AceButton::kEventPressed:
+      noteOn(0, 48, 10); // Channel 0, middle C, normal velocity
+      Serial.println("note on");
       break;
 
-    case programStates::started:
-      Serial.println("started");
-      break;
-
-    case programStates::running:
-      Serial.println("running");
-      break;
-
-    case programStates::stopping:
-      Serial.println("stopping");
-      break;
-
-    case programStates::stopped:
-      Serial.println("stopped");
+    case AceButton::kEventReleased:
+      noteOff(0, 48, 10); // Channel 0, middle C, normal velocity
+      Serial.println("released");
       break;
 
     default:
+      Serial.println("wrong midi button event");
       break;
     }
+    MidiUSB.flush();
   }
-}
 
-void bumpState()
-{
-  printState();
-
-  switch (progState)
+  //-----LED BUTTONS--------
+  else
   {
-  case programStates::started:
-    progState = programStates::running;
-    GreenLed.Breathe(2000);
-    GreenLed.Forever();
-    break;
-
-  case programStates::running:
-    progState = programStates::stopping;
-    GreenLed.Blink(5000, 5000).Repeat(1);
-    break;
-
-  case programStates::stopping:
-    if (GreenLed.IsRunning() == 0)
+    if (AceButton::kEventPressed)
     {
-      progState = programStates::stopped;
-      GreenLed.Breathe(10000);
-      Serial.println("stopped");
+      switch (ledID)
+      {
+      case 1: //RED LED
+        switch (redState)
+        {
+        case ledStates::breathe:
+          redState = ledStates::flickr;
+          redLed.Candle();
+          break;
+
+        case ledStates::flickr:
+          redState = ledStates::off;
+          redLed.FadeOff(1000);
+          break;
+
+        case ledStates::off:
+          redState = ledStates::on;
+          redLed.FadeOn(1000);
+          break;
+        case ledStates::unknown:
+        default:
+          break;
+        }
+
+        break;
+
+      case 2: //GREEN LED
+        switch (greenState)
+        {
+        case ledStates::breathe:
+          greenState = ledStates::flickr;
+          greenLed.Candle();
+          break;
+
+        case ledStates::flickr:
+          greenState = ledStates::off;
+          greenLed.FadeOff(1000);
+          break;
+
+        case ledStates::off:
+          greenState = ledStates::on;
+          greenLed.FadeOn(1000);
+          break;
+
+        case ledStates::unknown:
+        default:
+          break;
+        }
+
+        break;
+
+      case 3: //BLUE LED
+        switch (blueState)
+        {
+        case ledStates::breathe:
+          blueState = ledStates::flickr;
+          blueLed.Candle();
+          break;
+
+        case ledStates::flickr:
+          blueState = ledStates::off;
+          blueLed.FadeOff(1000);
+          break;
+
+        case ledStates::off:
+          blueState = ledStates::on;
+          blueLed.FadeOn(1000);
+          break;
+
+        case ledStates::unknown:
+        default:
+          break;
+        }
+        break;
+
+      case 4: //YELLOW LED
+        switch (yellowState)
+        {
+        case ledStates::breathe:
+          yellowState = ledStates::flickr;
+          yellowLed.Candle();
+          break;
+
+        case ledStates::flickr:
+          yellowState = ledStates::off;
+          yellowLed.FadeOff(1000);
+          break;
+
+        case ledStates::off:
+          yellowState = ledStates::on;
+          yellowLed.FadeOn(1000);
+          break;
+
+        case ledStates::unknown:
+        default:
+          break;
+        }
+        break;
+
+      default:
+        Serial.println("wrong led...");
+        break;
+      }
     }
-    break;
-
-  default:
-    Serial.println("invalid action");
-    break;
-  }
-}
-
-void printState()
-{
-  Serial.print("Current state: ");
-  switch (progState)
-  {
-  case programStates::ready:
-    Serial.println("ready");
-    break;
-
-  case programStates::started:
-    Serial.println("started");
-    break;
-
-  case programStates::running:
-    Serial.println("running");
-    break;
-
-  case programStates::stopping:
-    Serial.println("stopping");
-    break;
-
-  case programStates::stopped:
-    Serial.println("stopped");
-    break;
-
-  default:
-    Serial.println("unknown");
-    break;
-  }
-}
-
-void handleEvent(AceButton * /*button*/, uint8_t eventType, uint8_t /* buttonState*/)
-{
-  printState();
-
-  switch (eventType)
-  {
-  case AceButton::kEventPressed:
-    noteOn(0, 48, 10); // Channel 0, middle C, normal velocity
-    Serial.println("pressed");
-    break;
-
-  case AceButton::kEventReleased:
-    noteOff(0, 48, 10); // Channel 0, middle C, normal velocity
-    Serial.println("released");
-    bumpState();
-    break;
-
-  case AceButton::kEventDoubleClicked:
-    Serial.println("double clicked");
-    if (progState == programStates::stopped)
+    else if (AceButton::kEventLongPressed)
     {
-      progState = programStates::ready;
-      Serial.println("ready");
+      redState = ledStates::off;
+      greenState = ledStates::off;
+      blueState = ledStates::off;
+      yellowState = ledStates::off;
     }
-    break;
-
-  case AceButton::kEventLongPressed:
-    if (progState == programStates::ready)
-    {
-      progState = programStates::started;
-      GreenLed.Breathe(1000);
-      GreenLed.Repeat(3);
-      Serial.println("started");
-    }
-    Serial.println("long pressed");
-    break;
-
-  default:
-    break;
   }
-
-  MidiUSB.flush();
 }
 
 // First parameter is the event type (0x09 = note on, 0x08 = note off).
