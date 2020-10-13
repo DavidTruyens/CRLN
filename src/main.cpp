@@ -14,15 +14,6 @@
 #define GREENPIN 10
 #define REDPIN 11
 
-enum class buttons
-{
-  midi,
-  yellow,
-  red,
-  blue,
-  green
-} button;
-
 enum class ledStates
 {
   off,
@@ -31,15 +22,15 @@ enum class ledStates
   flickr,
   unknown,
 } redState,
-    blueState, greenState, yellowState, prevRedState, prevBlueState, prevGreenState, prevYellowState;
+    blueState, greenState, yellowState;
 
 //button declarations
 using namespace ace_button;
-AceButton midiBtn(MIDI_IN, LOW, 0);
-AceButton redBtn(RED_IN, LOW, 1);
-AceButton greenBtn(GREEN_IN, LOW, 2);
-AceButton blueBtn(BLUE_IN, LOW, 3);
-AceButton yellowBtn(YELLOW_IN, LOW, 4);
+AceButton midiBtn(MIDI_IN, HIGH, 0);
+AceButton redBtn(RED_IN, HIGH, 1);
+AceButton greenBtn(GREEN_IN, HIGH, 2);
+AceButton blueBtn(BLUE_IN, HIGH, 3);
+AceButton yellowBtn(YELLOW_IN, HIGH, 4);
 
 //buttons event handler
 void handleEvent(AceButton *, uint8_t, uint8_t);
@@ -55,6 +46,7 @@ void setup()
   // put your setup code here, to run once:
   delay(2000);
   Serial.begin(115200);
+  Serial.println("The buzz has started");
 
   pinMode(MIDI_IN, INPUT_PULLUP);
   pinMode(RED_IN, INPUT_PULLUP);
@@ -71,11 +63,6 @@ void setup()
   yellowState = ledStates::breathe;
   greenState = ledStates::breathe;
   blueState = ledStates::breathe;
-
-  prevRedState = ledStates::unknown;
-  prevGreenState = ledStates::unknown;
-  prevBlueState = ledStates::unknown;
-  prevYellowState = ledStates::unknown;
 
   Serial.println("ready");
 }
@@ -104,13 +91,18 @@ void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
 {
 
   uint8_t ledID = aceBtn->getId();
+  Serial.println(ledID);
+  //Serial.printf("button %u \n", ledID);
 
   //-----MIDI BUTTON--------
   if (ledID == 0)
   {
+    Serial.println("midi button");
+
     switch (eventType)
     {
     case AceButton::kEventPressed:
+
       noteOn(0, 48, 10); // Channel 0, middle C, normal velocity
       Serial.println("note on");
       break;
@@ -124,14 +116,18 @@ void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
       Serial.println("wrong midi button event");
       break;
     }
+
     MidiUSB.flush();
   }
 
   //-----LED BUTTONS--------
   else
   {
-    if (AceButton::kEventPressed)
+    Serial.println("led button");
+
+    if (eventType == AceButton::kEventPressed)
     {
+      Serial.println("Button pressed");
       switch (ledID)
       {
       case 1: //RED LED
@@ -139,20 +135,32 @@ void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
         {
         case ledStates::breathe:
           redState = ledStates::flickr;
-          redLed.Candle();
+          redLed.Candle().Forever();
+          Serial.println("red candle");
           break;
 
         case ledStates::flickr:
           redState = ledStates::off;
+          redLed.Off();
           redLed.FadeOff(1000);
+          Serial.println("red off");
           break;
 
         case ledStates::off:
           redState = ledStates::on;
-          redLed.FadeOn(1000);
+          redLed.On();
+          Serial.println("red on");
           break;
+
+        case ledStates::on:
+          redState = ledStates::breathe;
+          redLed.Breathe(5000).Forever();
+          Serial.println("red breathe");
+          break;
+
         case ledStates::unknown:
         default:
+          Serial.println("red unknown");
           break;
         }
 
@@ -163,21 +171,31 @@ void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
         {
         case ledStates::breathe:
           greenState = ledStates::flickr;
-          greenLed.Candle();
+          greenLed.Candle().Forever();;
+          Serial.println("green candle");
           break;
 
         case ledStates::flickr:
           greenState = ledStates::off;
-          greenLed.FadeOff(1000);
+          greenLed.Off();
+          Serial.println("green off");
           break;
 
         case ledStates::off:
           greenState = ledStates::on;
-          greenLed.FadeOn(1000);
+          greenLed.On();
+          Serial.println("green on");
+          break;
+
+        case ledStates::on:
+          greenState = ledStates::breathe;
+          greenLed.Breathe(5000).Forever();
+          Serial.println("green breathe");
           break;
 
         case ledStates::unknown:
         default:
+          Serial.println("green unknown");
           break;
         }
 
@@ -188,21 +206,31 @@ void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
         {
         case ledStates::breathe:
           blueState = ledStates::flickr;
-          blueLed.Candle();
+          blueLed.Candle().Forever();;
+          Serial.println("blue candle");
           break;
 
         case ledStates::flickr:
           blueState = ledStates::off;
-          blueLed.FadeOff(1000);
+          blueLed.Off();
+          Serial.println("blue off");
           break;
 
         case ledStates::off:
           blueState = ledStates::on;
-          blueLed.FadeOn(1000);
+          blueLed.On();
+          Serial.println("blue on");
+          break;
+
+        case ledStates::on:
+          blueState = ledStates::breathe;
+          blueLed.Breathe(5000).Forever();
+          Serial.println("blue breathe");
           break;
 
         case ledStates::unknown:
         default:
+          Serial.println("blue unknown");
           break;
         }
         break;
@@ -212,21 +240,31 @@ void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
         {
         case ledStates::breathe:
           yellowState = ledStates::flickr;
-          yellowLed.Candle();
+          yellowLed.Candle().Forever();
+          Serial.println("yellow candle");
           break;
 
         case ledStates::flickr:
           yellowState = ledStates::off;
-          yellowLed.FadeOff(1000);
+          yellowLed.Off();
+          Serial.println("yellow off");
           break;
 
         case ledStates::off:
           yellowState = ledStates::on;
-          yellowLed.FadeOn(1000);
+          yellowLed.On();
+          Serial.println("yellow on");
+          break;
+
+        case ledStates::on:
+          yellowState = ledStates::breathe;
+          yellowLed.Breathe(5000).Forever();
+          Serial.println("yellow breathe");
           break;
 
         case ledStates::unknown:
         default:
+          Serial.println("yellow unknown");
           break;
         }
         break;
@@ -236,12 +274,18 @@ void handleEvent(AceButton *aceBtn, uint8_t eventType, uint8_t /* buttonState*/)
         break;
       }
     }
-    else if (AceButton::kEventLongPressed)
+    else if (eventType == AceButton::kEventLongPressed)
     {
+      Serial.println("long press");
       redState = ledStates::off;
       greenState = ledStates::off;
       blueState = ledStates::off;
       yellowState = ledStates::off;
+
+      redLed.Off();
+      greenLed.Off();
+      blueLed.Off();
+      yellowLed.Off();
     }
   }
 }
