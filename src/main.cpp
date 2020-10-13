@@ -4,7 +4,7 @@
 #include "jled.h"
 
 #define INPUTPIN1 A1
-#define GREENLED 12
+#define GREENLED 5
 #define REDLED 10
 
 using namespace ace_button;
