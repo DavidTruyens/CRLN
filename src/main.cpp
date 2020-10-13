@@ -41,6 +41,13 @@ JLed redLed = JLed(REDPIN).Breathe(3000).Forever();
 JLed blueLed = JLed(BLUEPIN).Breathe(1000).Forever();
 JLed yellowLed = JLed(YELLOWPIN).Breathe(2000).Forever();
 
+//functions
+uint8_t PushButton();
+void noteOn(byte channel, byte pitch, byte velocity);
+void noteOff(byte channel, byte pitch, byte velocity);
+void runStates();
+void printState();
+
 void setup()
 {
   // put your setup code here, to run once:
@@ -66,12 +73,6 @@ void setup()
 
   Serial.println("ready");
 }
-
-uint8_t PushButton();
-void noteOn(byte channel, byte pitch, byte velocity);
-void noteOff(byte channel, byte pitch, byte velocity);
-void runStates();
-void printState();
 
 void loop()
 {
